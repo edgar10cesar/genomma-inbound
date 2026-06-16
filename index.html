@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genomma · Inbound QA</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Playfair+Display:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:#EEF3F9; --surface:#FFFFFF; --surface2:#F4F7FB;
+  --border:#D6E0EE; --border2:#C2D0E4;
+  --blue:#1A56A0; --blue-mid:#2F72CC; --blue-lt:#5B9BD5;
+  --blue-dim:rgba(26,86,160,0.07); --blue-dim2:rgba(26,86,160,0.13);
+  --ok:#1A7A4A; --ok-bg:#EAF5EE; --ok-bd:#A8D9BC;
+  --warn:#8A6200; --warn-bg:#FEF7E6; --warn-bd:#F0D080;
+  --fail:#9B1C1C; --fail-bg:#FEF0F0; --fail-bd:#F5ADAD;
+  --text:#0F1C2E; --text2:#4A6180; --text3:#8BA3BF;
+  --r:10px; --r-sm:6px;
+  --shadow:0 1px 3px rgba(15,28,46,0.07),0 4px 16px rgba(15,28,46,0.04);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;font-size:13.5px;line-height:1.6;min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:var(--blue);color:#fff;height:52px;display:flex;align-items:center;padding:0 28px;justify-content:space-between;position:sticky;top:0;z-index:200}
+.tb-brand{display:flex;align-items:center;gap:11px}
+.tb-logo{width:27px;height:27px;border-radius:6px;background:rgba(255,255,255,0.17);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#fff}
+.tb-name{font-weight:600;font-size:14px}
+.tb-mod{font-size:11px;opacity:.55;margin-left:4px;font-weight:300}
+.tb-pill{font-family:'IBM Plex Mono',monospace;font-size:11px;background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.18);padding:3px 10px;border-radius:20px;display:flex;align-items:center;gap:6px}
+.tb-pill::before{content:'';width:6px;height:6px;border-radius:50%;background:#FBBF24;display:block}
+
+/* SHELL */
+.shell{display:grid;grid-template-columns:210px 1fr;min-height:calc(100vh - 52px)}
+
+/* SIDEBAR */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:22px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto}
+.sb-section{padding:0 14px;margin-bottom:22px}
+.sb-label{font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:.10em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;padding:0 4px}
+.nav{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:var(--r-sm);color:var(--text2);font-size:13px;cursor:pointer;transition:all .15s;border:1px solid transparent;user-select:none}
+.nav:hover{background:var(--blue-dim);color:var(--blue)}
+.nav.active{background:var(--blue-dim2);color:var(--blue);font-weight:500;border-color:rgba(26,86,160,0.14)}
+.nav .icon{font-size:14px;flex-shrink:0}
+.nb{margin-left:auto;font-size:10px;font-family:'IBM Plex Mono',monospace;background:var(--blue-dim2);color:var(--blue);padding:1px 6px;border-radius:10px;font-weight:500}
+.nb.warn{background:var(--warn-bg);color:var(--warn)}
+.nb.ok{background:var(--ok-bg);color:var(--ok)}
+.sb-div{height:1px;background:var(--border);margin:4px 14px 18px}
+
+/* MAIN */
+.main{padding:28px 32px}
+.panel{display:none;animation:fu .2s ease}
+.panel.active{display:block}
+@keyframes fu{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+
+/* PAGE HEADER */
+.ph{margin-bottom:24px}
+.ph-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:500;color:var(--text);margin-bottom:3px}
+.ph-sub{font-size:12.5px;color:var(--text2)}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:20px 22px}
+.card+.card{margin-top:14px}
+.ct{font-size:10.5px;font-family:'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:7px;margin-bottom:14px}
+.ct::before{content:'';display:block;width:2px;height:12px;background:var(--blue-mid);border-radius:2px}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:960px){.g2{grid-template-columns:1fr}}
+
+/* UPLOAD */
+.dz{border:1.5px dashed var(--border2);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer;transition:all .18s;background:var(--surface2);position:relative}
+.dz:hover,.dz.over{border-color:var(--blue-mid);background:var(--blue-dim)}
+.dz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-icon{font-size:22px;opacity:.5;margin-bottom:5px}
+.dz-label{font-size:12.5px;color:var(--text2)}
+.dz-label b{color:var(--blue-mid)}
+.dz-hint{font-size:10.5px;color:var(--text3);margin-top:2px;font-family:'IBM Plex Mono',monospace}
+.ftag{display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:3px 9px;background:var(--blue-dim2);border-radius:20px;font-size:11px;color:var(--blue);font-family:'IBM Plex Mono',monospace}
+.ftag .x{cursor:pointer;color:var(--text3);margin-left:2px}.ftag .x:hover{color:var(--fail)}
+
+/* INPUTS */
+textarea,input[type=text],input[type=date],select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 10px;outline:none;transition:border-color .15s,box-shadow .15s;resize:vertical}
+textarea:focus,input:focus,select:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px rgba(47,114,204,0.11)}
+textarea{min-height:80px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;color:var(--text2);margin-bottom:3px;font-weight:500}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:none;border-radius:var(--r-sm);font-family:'Sora',sans-serif;font-weight:500;font-size:13px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue-mid);transform:translateY(-1px);box-shadow:0 3px 10px rgba(26,86,160,0.22)}
+.btn-primary:disabled{opacity:.38;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-outline{background:transparent;color:var(--blue);border:1px solid var(--border2)}
+.btn-outline:hover{border-color:var(--blue-mid);background:var(--blue-dim)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-danger{background:var(--fail-bg);color:var(--fail);border:1px solid var(--fail-bd)}
+
+/* MODULE CARD — the main analysis block per step */
+.mod-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px}
+.mod-header{display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.mod-step{width:26px;height:26px;border-radius:50%;background:var(--blue-dim2);color:var(--blue);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mod-step.done{background:var(--ok-bg);color:var(--ok)}
+.mod-step.locked{background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
+.mod-title{font-weight:600;font-size:14px;flex:1}
+.mod-subtitle{font-size:12px;color:var(--text2)}
+.mod-body{padding:18px 20px}
+.mod-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--border);background:var(--surface2)}
+.mod-footer-info{font-size:12px;color:var(--text2)}
+
+/* STATUS BADGE on module */
+.status-dot{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-family:'IBM Plex Mono',monospace;padding:4px 10px;border-radius:20px;border:1px solid}
+.status-dot.pending{background:var(--surface2);color:var(--text3);border-color:var(--border)}
+.status-dot.running{background:var(--blue-dim2);color:var(--blue-mid);border-color:rgba(26,86,160,0.2)}
+.status-dot.ok{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-bd)}
+.status-dot.warn{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-bd)}
+.status-dot.fail{background:var(--fail-bg);color:var(--fail);border-color:var(--fail-bd)}
+.status-dot.locked{background:var(--surface2);color:var(--text3);border-color:var(--border);opacity:.6}
+
+/* LOCKED OVERLAY */
+.locked-notice{text-align:center;padding:28px 20px;color:var(--text3);font-size:12.5px}
+.locked-notice .li{font-size:22px;opacity:.3;margin-bottom:8px}
+.locked-notice a{color:var(--blue-mid);cursor:pointer;text-decoration:underline}
+
+/* SEPARATOR */
+.sep{height:1px;background:var(--border);margin:14px 0}
+
+/* NOTICE */
+.notice{display:flex;align-items:flex-start;gap:9px;padding:10px 13px;border-radius:var(--r-sm);font-size:12.5px;margin-bottom:14px}
+.notice.warn{background:var(--warn-bg);border:1px solid var(--warn-bd);color:var(--warn)}
+.notice.info{background:var(--blue-dim);border:1px solid rgba(26,86,160,0.18);color:var(--blue-mid)}
+.notice.ok{background:var(--ok-bg);border:1px solid var(--ok-bd);color:var(--ok)}
+
+/* LOADING INLINE */
+.inline-loader{display:none;align-items:center;gap:10px;padding:20px;font-size:12px;color:var(--text2);font-family:'IBM Plex Mono',monospace}
+.inline-loader.show{display:flex}
+.spin{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue-mid);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* RESULT ITEMS */
+.res-block{display:none;margin-top:4px}
+.res-block.show{display:block;animation:fu .25s ease}
+.res-hero{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r-sm);border:1px solid;margin-bottom:12px}
+.res-hero.ok{background:var(--ok-bg);border-color:var(--ok-bd)}
+.res-hero.warn{background:var(--warn-bg);border-color:var(--warn-bd)}
+.res-hero.fail{background:var(--fail-bg);border-color:var(--fail-bd)}
+.res-title{font-family:'Playfair Display',serif;font-size:17px}
+.res-hero.ok .res-title{color:var(--ok)}
+.res-hero.warn .res-title{color:var(--warn)}
+.res-hero.fail .res-title{color:var(--fail)}
+.res-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.score-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.score-lbl{font-size:11px;color:var(--text2);font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.score-track{flex:1;height:5px;background:var(--border);border-radius:10px;overflow:hidden}
+.score-fill{height:100%;border-radius:10px;transition:width .9s ease;width:0%}
+.score-pct{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;min-width:36px;text-align:right}
+.div-item{display:flex;align-items:flex-start;gap:9px;padding:8px 11px;border-radius:var(--r-sm);border:1px solid;margin-bottom:5px;font-size:12.5px}
+.div-item.ok{background:var(--ok-bg);border-color:var(--ok-bd)}
+.div-item.warn{background:var(--warn-bg);border-color:var(--warn-bd)}
+.div-item.fail{background:var(--fail-bg);border-color:var(--fail-bd)}
+.div-name{font-weight:500;color:var(--text)}
+.div-detail{font-size:11px;color:var(--text2);font-family:'IBM Plex Mono',monospace;margin-top:1px}
+.div-obs{font-size:11px;color:var(--warn);margin-top:1px;font-style:italic}
+.chip{display:inline-flex;align-items:center;font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:500;padding:2px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0;border:1px solid}
+.chip.ok{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-bd)}
+.chip.warn{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-bd)}
+.chip.fail{background:var(--fail-bg);color:var(--fail);border-color:var(--fail-bd)}
+.chip.info{background:var(--blue-dim2);color:var(--blue);border-color:rgba(26,86,160,0.2)}
+.crit-list{list-style:none;padding:0;margin-bottom:12px}
+.crit-list li{display:flex;gap:7px;padding:7px 11px;border-radius:var(--r-sm);border:1px solid var(--fail-bd);background:var(--fail-bg);color:var(--fail);font-size:12.5px;margin-bottom:4px}
+.crit-list li::before{content:'!';font-weight:700;flex-shrink:0}
+.warn-list{list-style:none;padding:0;margin-bottom:12px}
+.warn-list li{display:flex;gap:7px;padding:7px 11px;border-radius:var(--r-sm);border:1px solid var(--warn-bd);background:var(--warn-bg);color:var(--warn);font-size:12.5px;margin-bottom:4px}
+.warn-list li::before{content:'~';font-weight:700;flex-shrink:0}
+.recom{background:var(--blue-dim);border:1px solid rgba(26,86,160,0.17);border-radius:var(--r-sm);padding:11px 14px;font-size:12.5px;color:var(--blue);margin-top:14px}
+.recom strong{display:block;font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
+
+/* PARAMS TABLE */
+.ptable{width:100%;border-collapse:collapse;font-size:12px}
+.ptable th{text-align:left;padding:6px 9px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.ptable td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.ptable tr:last-child td{border-bottom:none}
+.ptable td input{font-size:11px;padding:4px 7px}
+.ptable-wrap{border:1px solid var(--border);border-radius:var(--r-sm);max-height:280px;overflow-y:auto}
+.ptable-wrap::-webkit-scrollbar{width:3px}.ptable-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.add-row{display:flex;gap:7px;margin-top:9px}
+.add-row input{flex:1}
+
+/* EPA CARDS */
+.epa-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:10px}
+.epa-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:13px;transition:all .15s;position:relative}
+.epa-card:hover{border-color:var(--blue-mid);box-shadow:0 2px 7px rgba(26,86,160,0.09)}
+.epa-card-name{font-weight:600;font-size:12.5px;color:var(--text);margin-bottom:2px}
+.epa-card-sku{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3)}
+.epa-card-ct{font-size:11px;color:var(--text2);margin-top:5px}
+.epa-del{position:absolute;top:6px;right:6px;font-size:11px;color:var(--text3);cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 5px;line-height:1.4;transition:all .15s;z-index:2}
+.epa-del:hover{color:var(--fail);border-color:var(--fail-bd);background:var(--fail-bg)}
+
+/* HIST */
+.hist-row{display:flex;align-items:center;gap:11px;padding:11px 13px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:7px;cursor:pointer;transition:border-color .15s}
+.hist-row:hover{border-color:var(--blue-mid)}
+.hdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.hdot.ok{background:var(--ok)}.hdot.fail{background:var(--fail)}.hdot.warn{background:var(--warn)}
+.hinfo{flex:1}.hname{font-weight:500;font-size:13px}.hmeta{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+.htime{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+
+/* COMING SOON */
+.cs{text-align:center;padding:48px 36px;border:1.5px dashed var(--border);border-radius:var(--r);background:var(--surface);margin-bottom:14px}
+.cs-icon{font-size:32px;opacity:.3;margin-bottom:12px}
+.cs h3{font-family:'Playfair Display',serif;font-size:17px;color:var(--text2);margin-bottom:5px}
+.cs p{font-size:12.5px;color:var(--text3);max-width:320px;margin:0 auto}
+.empty{text-align:center;padding:32px;color:var(--text3);font-size:12.5px}
+
+/* SUMMARY BAR */
+.summary-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}
+.sum-label{font-size:10.5px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:5px}
+.sum-value{font-family:'Playfair Display',serif;font-size:20px;color:var(--text)}
+.sum-value.ok{color:var(--ok)}.sum-value.fail{color:var(--fail)}.sum-value.warn{color:var(--warn)}
+.sum-sub{font-size:11px;color:var(--text2);margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-brand">
+    <div class="tb-logo">G</div>
+    <span class="tb-name">Genomma</span>
+    <span class="tb-mod">/ Análise de Inbound</span>
+  </div>
+  <div class="tb-pill">Análise mín. 24h antes da chegada</div>
+</div>
+
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sb-section">
+      <div class="sb-label">Análise</div>
+      <div class="nav active" data-p="analise" onclick="go('analise',this)">
+        <span class="icon">🔍</span> Novo Recebimento
+      </div>
+      <div class="nav" data-p="historico" onclick="go('historico',this)">
+        <span class="icon">📁</span> Histórico
+        <span class="nb" id="badge-hist">0</span>
+      </div>
+    </div>
+    <div class="sb-div"></div>
+    <div class="sb-section">
+      <div class="sb-label">Configuração</div>
+      <div class="nav" data-p="epas" onclick="go('epas',this)">
+        <span class="icon">📋</span> Banco de EPAs
+        <span class="nb" id="badge-epas">0</span>
+      </div>
+      <div class="nav" data-p="nf" onclick="go('nf',this)">
+        <span class="icon">🧾</span> Nota Fiscal
+        <span class="nb warn" id="badge-nf">Pendente</span>
+      </div>
+      <div class="nav" data-p="pedido" onclick="go('pedido',this)">
+        <span class="icon">📦</span> Pedido
+        <span class="nb warn" id="badge-ped">Pendente</span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ══════════════════════════════════════
+         PANEL: NOVO RECEBIMENTO
+    ══════════════════════════════════════ -->
+    <div id="panel-analise" class="panel active">
+      <div class="ph">
+        <div class="ph-title">Novo Recebimento</div>
+        <div class="ph-sub">Insira os documentos e execute cada análise de forma independente. Disponível conforme configuração.</div>
+      </div>
+
+      <!-- Info do recebimento -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="ct">Informações do Recebimento</div>
+        <div class="g2">
+          <div>
+            <div class="field"><label>Produto / SKU</label><input type="text" id="info-produto" placeholder="Ex: Cicatricure Gold Lift 50g"></div>
+            <div class="field"><label>Fornecedor</label><input type="text" id="info-fornecedor" placeholder="Nome do fabricante"></div>
+          </div>
+          <div>
+            <div class="field"><label>Previsão de chegada ao CD</label><input type="date" id="info-chegada"></div>
+            <div class="field"><label>Analista responsável</label><input type="text" id="info-analista" placeholder="Nome do analista"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ETAPA 1: LAUDO ── -->
+      <div class="mod-card" id="mc-laudo">
+        <div class="mod-header">
+          <div class="mod-step" id="step-laudo">1</div>
+          <div>
+            <div class="mod-title">Análise do Laudo / EPA</div>
+            <div class="mod-subtitle">Compara o laudo do fornecedor com os parâmetros da EPA cadastrada</div>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+            <span class="status-dot pending" id="sdot-laudo">● Aguardando</span>
+          </div>
+        </div>
+        <div class="mod-body">
+          <div id="no-epa-warn" class="notice warn" style="display:none">
+            ⚠️ &nbsp;Nenhuma EPA cadastrada. <a onclick="go('epas')" style="cursor:pointer;text-decoration:underline;color:var(--warn)">Importe sua planilha de EPAs</a> antes de analisar.
+          </div>
+          <div class="g2">
+            <div>
+              <div class="dz" id="dz-laudo">
+                <input type="file" accept=".pdf,.txt,.xlsx,.csv" onchange="handleFile('laudo',this)">
+                <div class="dz-icon">📄</div>
+                <div class="dz-label"><b>Clique</b> ou arraste o laudo</div>
+                <div class="dz-hint">PDF · TXT · XLSX · CSV</div>
+              </div>
+              <div id="chip-laudo"></div>
+            </div>
+            <div class="field" style="margin-bottom:0">
+              <label>Ou cole o texto do laudo</label>
+              <textarea id="txt-laudo" placeholder="Cole aqui o conteúdo do laudo de análise..." style="height:110px"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="mod-footer">
+          <div class="mod-footer-info" id="epa-match-info">—</div>
+          <button class="btn btn-primary btn-sm" id="btn-laudo" onclick="runLaudo()">⚡ Analisar Laudo</button>
+        </div>
+      </div>
+      <div class="inline-loader" id="load-laudo"><div class="spin"></div><span id="load-laudo-txt">Analisando laudo...</span></div>
+      <div class="res-block" id="res-laudo"></div>
+
+      <!-- ── ETAPA 2: NOTA FISCAL ── -->
+      <div class="mod-card" id="mc-nf">
+        <div class="mod-header">
+          <div class="mod-step locked" id="step-nf">2</div>
+          <div>
+            <div class="mod-title">Análise da Nota Fiscal</div>
+            <div class="mod-subtitle">Verifica os campos da NF conforme parâmetros do Analista Fiscal</div>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+            <span class="status-dot locked" id="sdot-nf">🔒 Parâmetros pendentes</span>
+          </div>
+        </div>
+        <div class="mod-body" id="nf-body">
+          <div class="locked-notice">
+            <div class="li">🧾</div>
+            Os parâmetros de Nota Fiscal ainda não foram configurados.<br>
+            <a onclick="go('nf')">Configure os parâmetros</a> com o Analista Fiscal para habilitar esta etapa.
+          </div>
+        </div>
+        <div class="mod-footer" id="nf-footer" style="display:none">
+          <div class="mod-footer-info" id="nf-footer-info">—</div>
+          <button class="btn btn-primary btn-sm" id="btn-nf" onclick="runNF()">⚡ Analisar NF</button>
+        </div>
+      </div>
+      <div class="inline-loader" id="load-nf"><div class="spin"></div><span>Analisando nota fiscal...</span></div>
+      <div class="res-block" id="res-nf"></div>
+
+      <!-- ── ETAPA 3: PEDIDO ── -->
+      <div class="mod-card" id="mc-ped">
+        <div class="mod-header">
+          <div class="mod-step locked" id="step-ped">3</div>
+          <div>
+            <div class="mod-title">Análise do Pedido de Compra</div>
+            <div class="mod-subtitle">Confere os dados do pedido conforme parâmetros do Analista de Supply</div>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+            <span class="status-dot locked" id="sdot-ped">🔒 Parâmetros pendentes</span>
+          </div>
+        </div>
+        <div class="mod-body" id="ped-body">
+          <div class="locked-notice">
+            <div class="li">📦</div>
+            Os parâmetros de Pedido ainda não foram configurados.<br>
+            <a onclick="go('pedido')">Configure os parâmetros</a> com o Analista de Supply para habilitar esta etapa.
+          </div>
+        </div>
+        <div class="mod-footer" id="ped-footer" style="display:none">
+          <div class="mod-footer-info" id="ped-footer-info">—</div>
+          <button class="btn btn-primary btn-sm" id="btn-ped" onclick="runPed()">⚡ Analisar Pedido</button>
+        </div>
+      </div>
+      <div class="inline-loader" id="load-ped"><div class="spin"></div><span>Analisando pedido...</span></div>
+      <div class="res-block" id="res-ped"></div>
+
+      <!-- Exportar / Nova -->
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn btn-outline btn-sm" onclick="exportResult()">📤 Exportar análise</button>
+        <button class="btn btn-ghost btn-sm" onclick="resetForm()">🔄 Novo recebimento</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         PANEL: BANCO DE EPAs
+    ══════════════════════════════════════ -->
+    <div id="panel-epas" class="panel">
+      <div class="ph">
+        <div class="ph-title">Banco de EPAs</div>
+        <div class="ph-sub">Importe uma planilha com todas as Especificações de Produto Acabado. O sistema identificará automaticamente o produto pelo laudo.</div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="ct">Importar Planilha</div>
+        <div class="notice info">
+          📌 &nbsp;A planilha deve ter colunas <strong>produto</strong> e <strong>sku</strong>, mais uma coluna por parâmetro (nome na linha 1, valor nas demais).
+          <a href="#" onclick="downloadTemplate();return false;" style="color:var(--blue);font-weight:600;margin-left:6px">Baixar modelo ↓</a>
+        </div>
+        <div class="dz" id="dz-epa" style="max-width:480px">
+          <input type="file" accept=".xlsx,.xls,.csv" onchange="importEPA(this)">
+          <div class="dz-icon">📊</div>
+          <div class="dz-label"><b>Clique</b> ou arraste a planilha de EPAs</div>
+          <div class="dz-hint">XLSX · XLS · CSV</div>
+        </div>
+        <div id="import-fb" style="margin-top:8px;font-size:12px"></div>
+      </div>
+
+      <div class="card">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+          <div class="ct" style="margin-bottom:0">EPAs Cadastradas <span id="epa-count-lbl" style="font-weight:400;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px"></span></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="epa-search" placeholder="Buscar produto ou SKU..." style="width:210px;font-size:12px;padding:6px 9px" oninput="renderEPALib()">
+            <button class="btn btn-danger btn-sm" onclick="clearAllEPAs()" style="white-space:nowrap">🗑 Limpar tudo</button>
+          </div>
+        </div>
+
+        <!-- EPA TABLE LIST -->
+        <div id="epa-lib">
+          <div class="empty">Nenhuma EPA importada ainda. Importe uma planilha acima ou adicione manualmente abaixo.</div>
+        </div>
+
+        <!-- MANUAL ADD -->
+        <div class="sep"></div>
+        <div class="ct" style="margin-bottom:10px">Adicionar EPA Manualmente</div>
+        <div class="g2" style="margin-bottom:10px">
+          <div class="field" style="margin-bottom:0">
+            <label>Nome do Produto</label>
+            <input type="text" id="manual-produto" placeholder="Ex: Cicatricure Gold Lift 50g">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label>SKU / Código Genomma</label>
+            <input type="text" id="manual-sku" placeholder="Ex: CIC-GL-50">
+          </div>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <label style="font-size:11px;color:var(--text2);font-weight:500">Parâmetros de Análise</label>
+            <button class="btn btn-outline btn-sm" onclick="addManualParam()" style="font-size:11px">+ Parâmetro</button>
+          </div>
+          <div class="ptable-wrap" id="manual-params-wrap" style="display:none;margin-bottom:8px">
+            <table class="ptable">
+              <thead><tr><th>Análise / Parâmetro</th><th>Especificação (Liberação)</th><th style="width:40px"></th></tr></thead>
+              <tbody id="manual-params-body"></tbody>
+            </table>
+          </div>
+          <div id="manual-params-empty" style="font-size:12px;color:var(--text3);padding:6px 0">Nenhum parâmetro adicionado ainda.</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveManualEPA()">💾 Salvar EPA</button>
+
+        <!-- DETAIL VIEW -->
+        <div id="epa-detail" style="display:none;margin-top:16px">
+          <div class="sep"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="ct" style="margin-bottom:0" id="epa-det-title">Parâmetros</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-danger btn-sm" id="epa-det-del-btn" onclick="delEPAFromDetail()">✕ Excluir esta EPA</button>
+              <button class="btn btn-ghost btn-sm" onclick="closeEPADet()">Fechar</button>
+            </div>
+          </div>
+          <div class="ptable-wrap">
+            <table class="ptable">
+              <thead><tr><th>Análise / Parâmetro</th><th>Especificação (Liberação)</th></tr></thead>
+              <tbody id="epa-det-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         PANEL: NOTA FISCAL
+    ══════════════════════════════════════ -->
+    <div id="panel-nf" class="panel">
+      <div class="ph">
+        <div class="ph-title">Configuração · Nota Fiscal</div>
+        <div class="ph-sub">Cadastre os campos de verificação após alinhamento com o Analista Fiscal.</div>
+      </div>
+      <div class="cs">
+        <div class="cs-icon">🧾</div>
+        <h3>Aguardando parâmetros</h3>
+        <p>Quando definidos com o Analista Fiscal, cadastre os campos aqui. A etapa de NF será habilitada automaticamente.</p>
+      </div>
+      <div class="card">
+        <div class="ct">Cadastrar Campos</div>
+        <div class="notice info">💡 &nbsp;Cadastre campos já alinhados, mesmo que parcialmente. A etapa será habilitada assim que houver ao menos 1 campo.</div>
+        <div id="nf-ptable-wrap" style="display:none">
+          <div class="ptable-wrap" style="margin-bottom:10px">
+            <table class="ptable"><thead><tr><th>Campo</th><th>Regra / Valor esperado</th><th style="width:40px"></th></tr></thead>
+            <tbody id="nf-tbody"></tbody></table>
+          </div>
+        </div>
+        <div class="add-row">
+          <input type="text" id="nf-campo" placeholder="Campo (ex: CFOP, NCM, alíquota...)">
+          <input type="text" id="nf-regra" placeholder="Regra / valor esperado">
+          <button class="btn btn-primary btn-sm" onclick="addNF()">+ Add</button>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="saveNF()" style="margin-top:10px">💾 Salvar e habilitar etapa</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         PANEL: PEDIDO
+    ══════════════════════════════════════ -->
+    <div id="panel-pedido" class="panel">
+      <div class="ph">
+        <div class="ph-title">Configuração · Pedido de Compra</div>
+        <div class="ph-sub">Cadastre os campos de verificação após alinhamento com o Analista de Supply.</div>
+      </div>
+      <div class="cs">
+        <div class="cs-icon">📦</div>
+        <h3>Aguardando parâmetros</h3>
+        <p>Quando definidos com o Analista de Supply, cadastre os critérios aqui. A etapa será habilitada automaticamente.</p>
+      </div>
+      <div class="card">
+        <div class="ct">Cadastrar Campos</div>
+        <div class="notice info">💡 &nbsp;Cadastre campos já alinhados, mesmo que parcialmente. A etapa será habilitada assim que houver ao menos 1 campo.</div>
+        <div id="ped-ptable-wrap" style="display:none">
+          <div class="ptable-wrap" style="margin-bottom:10px">
+            <table class="ptable"><thead><tr><th>Campo</th><th>Critério</th><th style="width:40px"></th></tr></thead>
+            <tbody id="ped-tbody"></tbody></table>
+          </div>
+        </div>
+        <div class="add-row">
+          <input type="text" id="ped-campo" placeholder="Campo (ex: quantidade, fornecedor, prazo...)">
+          <input type="text" id="ped-regra" placeholder="Critério de verificação">
+          <button class="btn btn-primary btn-sm" onclick="addPed()">+ Add</button>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="savePed()" style="margin-top:10px">💾 Salvar e habilitar etapa</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         PANEL: HISTÓRICO
+    ══════════════════════════════════════ -->
+    <div id="panel-historico" class="panel">
+      <div class="ph">
+        <div class="ph-title">Histórico</div>
+        <div class="ph-sub">Análises realizadas nesta sessão.</div>
+      </div>
+      <div id="hist-list"><div class="empty">Nenhuma análise realizada ainda.</div></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+const S = {
+  epas: [],
+  nfParams: [],
+  pedParams: [],
+  nfEnabled: false,
+  pedEnabled: false,
+  files: {},
+  history: [],
+  results: { laudo: null, nf: null, ped: null }
+};
+
+// ══════════════════════════════════════════════════
+// NAV
+// ══════════════════════════════════════════════════
+function go(panel, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + panel).classList.add('active');
+  const target = el || document.querySelector(`[data-p="${panel}"]`);
+  if (target) target.classList.add('active');
+}
+
+// ══════════════════════════════════════════════════
+// FILE HANDLING
+// ══════════════════════════════════════════════════
+function handleFile(zone, input) {
+  if (!input.files.length) return;
+  const file = input.files[0];
+  const ext = file.name.split('.').pop().toLowerCase();
+  const chip = document.getElementById('chip-' + zone);
+  if (chip) chip.innerHTML = `<div class="ftag">📎 ${file.name} <span style="color:var(--text3);font-size:10px">lendo...</span><span class="x" onclick="clearFile('${zone}')">✕</span></div>`;
+
+  if (ext === 'pdf') {
+    // For PDFs: read as base64 and store for AI vision, also show filename
+    const reader = new FileReader();
+    reader.onload = e => {
+      // Store base64 for AI (strip data:application/pdf;base64, prefix)
+      const b64 = e.target.result.split(',')[1];
+      S.files[zone] = { type: 'pdf', base64: b64, name: file.name };
+      const ta = document.getElementById('txt-' + zone);
+      if (ta) ta.value = `[PDF carregado: ${file.name}]\nO sistema irá extrair o conteúdo automaticamente na análise.`;
+      if (chip) chip.innerHTML = `<div class="ftag">📄 ${file.name}<span class="x" onclick="clearFile('${zone}')">✕</span></div>`;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    // Text-based files: read as text
+    const reader = new FileReader();
+    reader.onload = e => {
+      S.files[zone] = { type: 'text', content: e.target.result.substring(0, 8000), name: file.name };
+      const ta = document.getElementById('txt-' + zone);
+      if (ta) ta.value = S.files[zone].content;
+      if (chip) chip.innerHTML = `<div class="ftag">📎 ${file.name}<span class="x" onclick="clearFile('${zone}')">✕</span></div>`;
+    };
+    reader.readAsText(file);
+  }
+}
+function clearFile(zone) {
+  delete S.files[zone];
+  const c = document.getElementById('chip-' + zone); if(c) c.innerHTML = '';
+  const t = document.getElementById('txt-' + zone); if(t) t.value = '';
+}
+
+// ══════════════════════════════════════════════════
+// EPA LIBRARY
+// ══════════════════════════════════════════════════
+function importEPA(input) {
+  if (!input.files.length) return;
+  const file = input.files[0];
+  const ext = file.name.split('.').pop().toLowerCase();
+  const fb = document.getElementById('import-fb');
+  fb.textContent = 'Lendo...';
+  fb.style.color = 'var(--text2)';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: ext === 'csv' ? 'string' : 'binary' });
+      let totalAdded = 0;
+
+      wb.SheetNames.forEach(sheetName => {
+        const lower = sheetName.toLowerCase();
+        if (lower === 'instruções' || lower === 'instrucoes' || lower === 'instrução') return;
+
+        const ws = wb.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        if (rows.length < 5) return;
+
+        // ── Extrai nome do produto e código (formato real Genomma) ──
+        let produto = '', sku = '';
+
+        for (let i = 0; i < Math.min(rows.length, 30); i++) {
+          const row = rows[i];
+          for (let ci = 0; ci < row.length; ci++) {
+            const cell = String(row[ci] || '').trim().toLowerCase();
+
+            // Nome comercial: próxima célula não-vazia na mesma linha
+            if (cell.includes('nome comercial')) {
+              for (let ni = ci + 1; ni < row.length; ni++) {
+                const v = String(row[ni] || '').trim();
+                if (v && !v.toLowerCase().includes('classe') && !v.toLowerCase().includes('rev')) {
+                  produto = v; break;
+                }
+              }
+            }
+
+            // Código de Cadastro Genomma: próxima célula não-vazia
+            if (cell.includes('código de cadastro') || cell.includes('codigo de cadastro')) {
+              for (let ni = ci + 1; ni < row.length; ni++) {
+                const v = String(row[ni] || '').trim();
+                if (v && /\d{4,}/.test(v)) { sku = v; break; }
+              }
+            }
+          }
+          if (produto && sku) break;
+        }
+
+        if (!produto && !sku) return; // Não é uma EPA válida
+
+        // ── Extrai Seção 2: Testes Físico-Químicos e Microbiológicos ──
+        const params = [];
+        let inSection2 = false;
+
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const firstCell = String(row[0] || '').trim();
+          const rowText = row.map(c => String(c || '')).join(' ').toLowerCase();
+
+          // Detecta início da Seção 2
+          if (!inSection2 && rowText.includes('testes') &&
+             (rowText.includes('físico') || rowText.includes('fisico') || rowText.includes('microbi'))) {
+            inSection2 = true;
+            continue;
+          }
+
+          // Detecta fim da Seção 2 (início da Seção 3 ou outra seção)
+          if (inSection2 && firstCell.match(/^[3-9]\s*[–-]/)) {
+            break;
+          }
+
+          if (!inSection2) continue;
+
+          // Pula a linha de cabeçalho (Análises / Especificação)
+          if (rowText.includes('análises') || rowText.includes('especificação (liberação)')) continue;
+
+          // Extrai análise (coluna A) e especificação (coluna D = índice 3)
+          const name = String(row[0] || '').trim();
+          // Busca a especificação: tenta col D (idx 3), senão última não-vazia
+          let spec = String(row[3] || '').trim();
+          if (!spec) {
+            for (let ci = row.length - 1; ci >= 1; ci--) {
+              const v = String(row[ci] || '').trim();
+              if (v) { spec = v; break; }
+            }
+          }
+
+          if (name && name.length > 2) {
+            params.push({ name, spec });
+          }
+        }
+
+        // Salva no banco
+        const idx = S.epas.findIndex(ex =>
+          (sku && ex.sku === sku) ||
+          (produto && ex.produto.toLowerCase() === produto.toLowerCase())
+        );
+        if (idx >= 0) {
+          S.epas[idx] = { produto, sku, params, fileName: file.name };
+        } else {
+          S.epas.push({ produto, sku, params, fileName: file.name });
+          totalAdded++;
+        }
+      });
+
+      if (totalAdded === 0 && S.epas.length === 0) {
+        fb.style.color = 'var(--warn)';
+        fb.textContent = '⚠️ Nenhuma EPA reconhecida. Verifique se o arquivo segue o formato Genomma.';
+        return;
+      }
+
+      fb.style.color = 'var(--ok)';
+      fb.textContent = `✅ ${totalAdded} EPA(s) importada(s). Total no banco: ${S.epas.length}`;
+      document.getElementById('badge-epas').textContent = S.epas.length;
+      saveEPAs();
+      renderEPALib();
+      document.getElementById('no-epa-warn').style.display = S.epas.length === 0 ? 'flex' : 'none';
+
+    } catch(err) {
+      fb.style.color = 'var(--fail)';
+      fb.textContent = '❌ Erro ao ler arquivo: ' + err.message;
+      console.error(err);
+    }
+  };
+  ext === 'csv' ? reader.readAsText(file) : reader.readAsBinaryString(file);
+}
+
+function renderEPALib() {
+  const q = (document.getElementById('epa-search')?.value||'').toLowerCase();
+  const items = S.epas.filter(e => !q || e.produto.toLowerCase().includes(q) || (e.sku||'').toLowerCase().includes(q));
+  const lib = document.getElementById('epa-lib');
+  const countLbl = document.getElementById('epa-count-lbl');
+  if (countLbl) countLbl.textContent = `(${items.length} de ${S.epas.length})`;
+  if (!items.length) {
+    lib.innerHTML = '<div class="empty">Nenhuma EPA encontrada.</div>';
+    return;
+  }
+  lib.innerHTML = `
+    <div class="ptable-wrap">
+      <table class="ptable">
+        <thead>
+          <tr>
+            <th>Produto</th>
+            <th>SKU</th>
+            <th style="text-align:center">Parâmetros</th>
+            <th style="text-align:center;width:160px">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map(e => {
+            const ri = S.epas.indexOf(e);
+            return `<tr>
+              <td style="font-weight:500">${e.produto||'—'}</td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text3)">${e.sku||'—'}</td>
+              <td style="text-align:center">${e.params.length}</td>
+              <td style="text-align:center">
+                <div style="display:flex;gap:6px;justify-content:center">
+                  <button class="btn btn-outline btn-sm" onclick="showEPADet(${ri})" style="font-size:11px;padding:4px 10px">👁 Ver</button>
+                  <button class="btn btn-danger btn-sm" onclick="delEPA(${ri})" style="font-size:11px;padding:4px 10px">✕ Excluir</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+let _currentEPAIdx = null;
+function showEPADet(i) {
+  const e = S.epas[i];
+  if (!e) return;
+  _currentEPAIdx = i;
+  document.getElementById('epa-det-title').textContent = `${e.produto||'—'} (${e.sku||'sem SKU'}) — ${e.params.length} parâmetros`;
+  document.getElementById('epa-det-body').innerHTML = e.params.map(p =>
+    `<tr><td>${p.name}</td><td>${p.spec}</td></tr>`).join('');
+  document.getElementById('epa-detail').style.display = 'block';
+  document.getElementById('epa-detail').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function delEPAFromDetail() {
+  if (_currentEPAIdx === null) return;
+  delEPA(_currentEPAIdx);
+  _currentEPAIdx = null;
+}
+function closeEPADet() { document.getElementById('epa-detail').style.display='none'; }
+function clearAllEPAs() {
+  if (!S.epas.length) { alert('Nenhuma EPA para remover.'); return; }
+  if (confirm(`Remover todas as ${S.epas.length} EPA(s) cadastradas?\nEsta ação não pode ser desfeita.`)) {
+    S.epas = [];
+    renderEPALib();
+    closeEPADet();
+    document.getElementById('badge-epas').textContent = '0';
+    document.getElementById('no-epa-warn').style.display = 'flex';
+  }
+}
+function delEPA(i) {
+  const epa = S.epas[i];
+  if (!epa) { alert('EPA não encontrada.'); return; }
+  if (confirm(`Remover a EPA "${epa.produto || epa.sku}"?\nEsta ação não pode ser desfeita.`)) {
+    S.epas.splice(i, 1);
+    renderEPALib();
+    closeEPADet();
+    document.getElementById('badge-epas').textContent = S.epas.length;
+    document.getElementById('no-epa-warn').style.display = S.epas.length === 0 ? 'flex' : 'none';
+  }
+}
+
+function downloadTemplate() {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet: INSTRUÇÕES
+  const wsInst = XLSX.utils.aoa_to_sheet([
+    ['MODELO DE EPA — GENOMMA LAB'],
+    [''],
+    ['COMO USAR', ''],
+    ['1. Duplique a aba MODELO_EPA', 'Clique com botão direito → Mover ou Copiar → marque Criar cópia'],
+    ['2. Renomeie a aba', 'Use o nome do produto ou SKU'],
+    ['3. Preencha o cabeçalho', 'Nome Comercial e Código de Cadastro são usados para identificação automática'],
+    ['4. Preencha a Seção 2', 'Cada linha é um parâmetro. O sistema só lê esta seção para análise do laudo.'],
+    ['5. Importe no sistema', 'Banco de EPAs → Importar Planilha'],
+    [''],
+    ['CAMPOS LIDOS PELO SISTEMA', ''],
+    ['Nome Comercial (Cadastro)', 'Identificação do produto no laudo'],
+    ['Código de Cadastro Genomma', 'SKU — identificação alternativa'],
+    ['Seção 2 — Análises', 'Nome do parâmetro'],
+    ['Seção 2 — Especificação (Liberação)', 'Valor esperado para comparação com o laudo'],
+  ]);
+  XLSX.utils.book_append_sheet(wb, wsInst, 'INSTRUÇÕES');
+
+  // Sheet: MODELO_EPA — mirroring the real Genomma format
+  const wsEpa = XLSX.utils.aoa_to_sheet([
+    ['ESPECIFICAÇÃO DE PRODUTO ACABADO'],
+    ['Nome Comercial (Cadastro):', 'PREENCHA AQUI', '', 'Classe:', 'OTC', 'Rev:', '0'],
+    ['Nome Oficial:   (Anvisa)', 'PREENCHA AQUI'],
+    ['Fabricante', 'PREENCHA AQUI', 'Última rev.:', '', 'País destino:', 'Brasil', 'Pág.: 1/1'],
+    [''],
+    ['1 – ESPECIFICAÇÕES DO PRODUTO'],
+    ['Código de Cadastro Genomma', '', '', 'PREENCHA O SKU/CÓDIGO'],
+    ['Validade', '', '', '24 meses'],
+    [''],
+    ['2 – TESTES FÍSICO-QUÍMICOS E MICROBIOLÓGICOS'],
+    ['Análises', '', '', 'Especificação (Liberação)'],
+    ['Descrição', '', '', 'Descreva o aspecto físico do produto'],
+    ['Determinação de Peso Médio do Conteúdo', '', '', 'Ex: 140,000 mg (± 10%: 126,000 a 154,000 mg)'],
+    ['Desintegração', '', '', 'Ex: ≤ 45,00 minutos'],
+    ['Perda por dessecação', '', '', 'Ex: ≤ 8,00 %'],
+    ['Quantificação de células viáveis', '', '', 'Ex: Lib.: ≥ 2,61 x10¹⁰ UFC/dose'],
+    ['Pesquisa de Escherichia coli', '', '', 'Ex: Ausência em 1 g em 5 unidades amostrais'],
+    ['Contagem total de bactérias aeróbias', '', '', 'Ex: Nenhuma das 5 unidades pode exceder 100 UFC/g'],
+    ['Contagem total de fungos', '', '', 'Ex: Nenhuma das 5 unidades pode exceder 100 UFC/g'],
+    ['ADICIONE MAIS LINHAS AQUI SE NECESSÁRIO', '', '', ''],
+    [''],
+    ['3 – MATERIAIS COMPLEMENTARES'],
+    ['(Não lido pelo sistema — apenas referência)'],
+  ]);
+  XLSX.utils.book_append_sheet(wb, wsEpa, 'MODELO_EPA');
+
+  XLSX.writeFile(wb, 'modelo_epa_genomma.xlsx');
+}
+
+// ══════════════════════════════════════════════════
+// EPA MATCHING
+// ══════════════════════════════════════════════════
+function matchEPA(text) {
+  if (!S.epas.length) return null;
+  const q = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  // 1. Match exato por SKU/código numérico
+  let m = S.epas.find(e => e.sku && q.includes(e.sku.toLowerCase()));
+  if (m) return m;
+
+  // 2. Match exato por nome completo
+  m = S.epas.find(e => q.includes(e.produto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
+  if (m) return m;
+
+  // 3. Match por tokens do nome (todos presentes)
+  m = S.epas.find(e => {
+    const tk = e.produto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(t => t.length > 3);
+    return tk.length > 0 && tk.every(t => q.includes(t));
+  });
+  if (m) return m;
+
+  // 4. Match parcial (60% dos tokens)
+  m = S.epas.find(e => {
+    const tk = e.produto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(t => t.length > 3);
+    const hits = tk.filter(t => q.includes(t));
+    return tk.length > 0 && hits.length >= Math.ceil(tk.length * 0.6);
+  });
+  if (m) return m;
+
+  // 5. Match por palavra-chave principal (primeira palavra significativa com +5 chars)
+  return S.epas.find(e => {
+    const mainWord = e.produto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).find(t => t.length > 5);
+    return mainWord && q.includes(mainWord);
+  }) || null;
+}
+
+// ══════════════════════════════════════════════════
+// NF / PEDIDO PARAMS
+// ══════════════════════════════════════════════════
+function addNF() {
+  const c = document.getElementById('nf-campo').value.trim();
+  const r = document.getElementById('nf-regra').value.trim();
+  if (!c) return;
+  S.nfParams.push({campo:c, regra:r});
+  document.getElementById('nf-campo').value='';
+  document.getElementById('nf-regra').value='';
+  renderSimpleTable('nf-tbody','nf-ptable-wrap',S.nfParams,'removeNF');
+}
+function removeNF(i) { S.nfParams.splice(i,1); renderSimpleTable('nf-tbody','nf-ptable-wrap',S.nfParams,'removeNF'); }
+function saveNF() {
+  if (!S.nfParams.length) { alert('Adicione ao menos um campo.'); return; }
+  S.nfEnabled = true;
+  unlockModule('nf');
+  document.getElementById('badge-nf').textContent = S.nfParams.length + ' campos';
+  document.getElementById('badge-nf').className = 'nb ok';
+  alert('✅ Etapa de Nota Fiscal habilitada!');
+  go('analise');
+}
+
+function addPed() {
+  const c = document.getElementById('ped-campo').value.trim();
+  const r = document.getElementById('ped-regra').value.trim();
+  if (!c) return;
+  S.pedParams.push({campo:c, regra:r});
+  document.getElementById('ped-campo').value='';
+  document.getElementById('ped-regra').value='';
+  renderSimpleTable('ped-tbody','ped-ptable-wrap',S.pedParams,'removePed');
+}
+function removePed(i) { S.pedParams.splice(i,1); renderSimpleTable('ped-tbody','ped-ptable-wrap',S.pedParams,'removePed'); }
+function savePed() {
+  if (!S.pedParams.length) { alert('Adicione ao menos um campo.'); return; }
+  S.pedEnabled = true;
+  unlockModule('ped');
+  document.getElementById('badge-ped').textContent = S.pedParams.length + ' campos';
+  document.getElementById('badge-ped').className = 'nb ok';
+  alert('✅ Etapa de Pedido habilitada!');
+  go('analise');
+}
+
+function renderSimpleTable(tbodyId, wrapId, arr, removeFn) {
+  document.getElementById(wrapId).style.display = arr.length ? 'block' : 'none';
+  document.getElementById(tbodyId).innerHTML = arr.map((p,i) =>
+    `<tr><td>${p.campo}</td><td>${p.regra}</td><td><button class="btn btn-danger btn-sm" onclick="${removeFn}(${i})" style="padding:2px 7px;font-size:11px">✕</button></td></tr>`
+  ).join('');
+}
+
+// ══════════════════════════════════════════════════
+// UNLOCK MODULE UI
+// ══════════════════════════════════════════════════
+function unlockModule(mod) {
+  // mod = 'nf' or 'ped'
+  const bodyId = mod + '-body';
+  const footerId = mod + '-footer';
+  const stepId = 'step-' + mod;
+  const sdotId = 'sdot-' + mod;
+
+  if (mod === 'nf') {
+    document.getElementById(bodyId).innerHTML = `
+      <div class="g2">
+        <div>
+          <div class="dz" id="dz-nf">
+            <input type="file" accept=".pdf,.txt,.xlsx,.csv,.xml" onchange="handleFile('nf',this)">
+            <div class="dz-icon">🧾</div>
+            <div class="dz-label"><b>Clique</b> ou arraste a nota fiscal</div>
+            <div class="dz-hint">PDF · XML · TXT · XLSX</div>
+          </div>
+          <div id="chip-nf"></div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>Ou cole os dados da NF</label>
+          <textarea id="txt-nf" placeholder="CNPJ emitente, produto, quantidade, valor, CFOP, NCM..." style="height:110px"></textarea>
+        </div>
+      </div>`;
+  } else {
+    document.getElementById(bodyId).innerHTML = `
+      <div class="g2">
+        <div>
+          <div class="dz">
+            <input type="file" accept=".pdf,.txt,.xlsx,.csv" onchange="handleFile('pedido',this)">
+            <div class="dz-icon">📦</div>
+            <div class="dz-label"><b>Clique</b> ou arraste o pedido</div>
+            <div class="dz-hint">PDF · XLSX · CSV</div>
+          </div>
+          <div id="chip-pedido"></div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>Ou cole os dados do pedido</label>
+          <textarea id="txt-pedido" placeholder="Número do pedido, fornecedor, SKU, quantidade, prazo..." style="height:110px"></textarea>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById(footerId).style.display = 'flex';
+  document.getElementById(stepId).className = 'mod-step';
+  document.getElementById(sdotId).textContent = '● Aguardando';
+  document.getElementById(sdotId).className = 'status-dot pending';
+}
+
+// ══════════════════════════════════════════════════
+// API CALL HELPER
+// ══════════════════════════════════════════════════
+async function callAI(prompt) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  const data = await res.json();
+  let raw = (data.content||[]).map(c=>c.text||'').join('');
+  return JSON.parse(raw.replace(/```json|```/g,'').trim());
+}
+
+// ══════════════════════════════════════════════════
+// RENDER RESULT BLOCK
+// ══════════════════════════════════════════════════
+function renderResBlock(elId, r, keyName, keySpec) {
+  const el = document.getElementById(elId);
+  const cls = r.status==='OK'||r.status==='APROVADO' ? 'ok' : r.status==='NOK'||r.status==='REPROVADO' ? 'fail' : 'warn';
+  const icons = {ok:'✅',fail:'❌',warn:'⚠️'};
+  const labels = {ok:'Aprovado',fail:'Reprovado — Divergências Críticas',warn:'Aprovado com Ressalvas'};
+  const scoreColor = r.score>=80?'var(--ok)':r.score>=50?'var(--warn)':'var(--fail)';
+
+  let html = `<div class="res-hero ${cls}">
+    <span style="font-size:24px">${icons[cls]}</span>
+    <div>
+      <div class="res-title">${r.titulo||labels[cls]}</div>
+      <div class="res-sub">${r.resumo||''}</div>
+    </div>
+  </div>
+  <div class="score-row">
+    <span class="score-lbl">Conformidade</span>
+    <div class="score-track"><div class="score-fill" data-t="${r.score||0}" style="background:${scoreColor}"></div></div>
+    <span class="score-pct" style="color:${scoreColor}">${r.score||0}%</span>
+  </div>`;
+
+  if (r.epa_produto) html += `<div style="margin-bottom:10px"><span class="chip info">📋 EPA: ${r.epa_produto}</span></div>`;
+  if (r.divergencias_criticas?.length) html += `<ul class="crit-list">${r.divergencias_criticas.map(d=>`<li>${d}</li>`).join('')}</ul>`;
+  if (r.avisos?.length) html += `<ul class="warn-list">${r.avisos.map(a=>`<li>${a}</li>`).join('')}</ul>`;
+
+  if (r.itens?.length) {
+    r.itens.forEach(item => {
+      const ic = item.status==='OK'?'ok':item.status==='NOK'?'fail':'warn';
+      html += `<div class="div-item ${ic}">
+        <span class="chip ${ic}" style="margin-top:1px">${item.status}</span>
+        <div>
+          <div class="div-name">${item[keyName]||item.campo||item.parametro||'—'}</div>
+          <div class="div-detail">Esp: ${item[keySpec]||item.especificacao||item.esperado||'—'} · Encontrado: ${item.encontrado||'—'}</div>
+          ${item.observacao?`<div class="div-obs">${item.observacao}</div>`:''}
+        </div>
+      </div>`;
+    });
+  }
+  if (r.recomendacao) html += `<div class="recom"><strong>Recomendação</strong>${r.recomendacao}</div>`;
+
+  el.innerHTML = html;
+  el.classList.add('show');
+  setTimeout(() => {
+    el.querySelector('.score-fill')?.style.setProperty('width', (r.score||0)+'%');
+  }, 80);
+}
+
+function setModStatus(mod, status) {
+  // status: ok | fail | warn | running | pending
+  const sdot = document.getElementById('sdot-' + mod);
+  const step = document.getElementById('step-' + mod);
+  const labels = { ok:'✅ Aprovado', fail:'❌ Reprovado', warn:'⚠️ Com ressalvas', running:'⏳ Analisando...', pending:'● Aguardando' };
+  sdot.className = 'status-dot ' + status;
+  sdot.textContent = labels[status] || status;
+  if (status==='ok'||status==='fail'||status==='warn') step.className='mod-step done';
+}
+
+// ══════════════════════════════════════════════════
+// RUN: LAUDO
+// ══════════════════════════════════════════════════
+async function runLaudo() {
+  const laudoFile = S.files['laudo'];
+  const laudoTxt  = document.getElementById('txt-laudo').value.trim();
+  const isPDF     = laudoFile && laudoFile.type === 'pdf';
+
+  if (!laudoFile && !laudoTxt) { alert('⚠️ Insira o laudo para análise.'); return; }
+
+  document.getElementById('btn-laudo').disabled = true;
+  document.getElementById('load-laudo').classList.add('show');
+  document.getElementById('res-laudo').classList.remove('show');
+  setModStatus('laudo', 'running');
+
+  const msgs = ['Lendo laudo...','Buscando EPA correspondente...','Comparando parâmetros com a EPA...','Consolidando resultado...'];
+  let mi = 0;
+  const iv = setInterval(() => {
+    document.getElementById('load-laudo-txt').textContent = msgs[Math.min(mi++, msgs.length - 1)];
+  }, 1400);
+
+  // ── Monta contexto da EPA ──
+  const produto = document.getElementById('info-produto').value.trim();
+  // Para PDF, tenta match pelo nome do produto preenchido; para texto, usa o texto
+  const matchStr = produto + ' ' + (isPDF ? (laudoFile.name || '') : laudoTxt.substring(0, 800));
+  const epa = matchEPA(matchStr);
+
+  document.getElementById('epa-match-info').textContent = epa
+    ? `📋 EPA: ${epa.produto} (${epa.sku})`
+    : S.epas.length ? '⚠️ EPA não identificada — análise geral' : '—';
+
+  const epaBlock = epa
+    ? `Produto EPA: ${epa.produto} (SKU: ${epa.sku})\n\nParâmetros da Seção 2 (Testes Físico-Químicos e Microbiológicos):\n${epa.params.map(p => `- ${p.name}: ${p.spec}`).join('\n')}`
+    : 'EPA não identificada no banco. Faça análise geral com base nos parâmetros do laudo.';
+
+  const systemPrompt = `Você é um sistema especializado em análise de qualidade de inbound para a Genomma Lab.
+Sua tarefa: comparar o Certificado de Análise (laudo) do fornecedor com os parâmetros da EPA (Especificação do Produto Acabado).
+Para cada parâmetro da EPA, verifique se o resultado no laudo está dentro da especificação.
+Retorne SOMENTE JSON válido, sem markdown, sem texto fora do JSON.`;
+
+  const userPrompt = `EPA DO PRODUTO:
+${epaBlock}
+
+${isPDF ? 'O laudo está no documento PDF anexo. Leia todos os parâmetros, especificações e resultados.' : `LAUDO DO FORNECEDOR:\n${laudoTxt}`}
+
+Retorne este JSON:
+{
+  "status": "APROVADO" | "REPROVADO" | "APROVADO COM RESSALVAS",
+  "score": 0-100,
+  "epa_produto": "nome do produto identificado no laudo",
+  "lote": "número do lote",
+  "data_fabricacao": "data de fabricação",
+  "validade": "data de validade",
+  "titulo": "título curto",
+  "resumo": "1 frase resumo executivo",
+  "itens": [
+    {
+      "parametro": "nome do parâmetro",
+      "especificacao": "valor esperado pela EPA",
+      "encontrado": "resultado do laudo",
+      "status": "OK" | "NOK" | "AVISO",
+      "observacao": "detalhe se relevante"
+    }
+  ],
+  "divergencias_criticas": ["lista de divergências bloqueantes"],
+  "avisos": ["lista de avisos não bloqueantes"],
+  "recomendacao": "ação recomendada ao analista"
+}`;
+
+  try {
+    // Monta o payload — PDF vai como documento, texto vai no prompt
+    let messages;
+    if (isPDF) {
+      messages = [{
+        role: 'user',
+        content: [
+          {
+            type: 'document',
+            source: {
+              type: 'base64',
+              media_type: 'application/pdf',
+              data: laudoFile.base64
+            }
+          },
+          { type: 'text', text: userPrompt }
+        ]
+      }];
+    } else {
+      messages = [{ role: 'user', content: userPrompt }];
+    }
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages
+      })
+    });
+
+    const data = await res.json();
+    clearInterval(iv);
+
+    if (data.error) throw new Error(data.error.message);
+
+    let raw = (data.content || []).map(c => c.text || '').join('');
+    raw = raw.replace(/```json|```/g, '').trim();
+    const r = JSON.parse(raw);
+
+    // Tenta re-match pela EPA se o laudo trouxe o nome do produto
+    if (!epa && r.epa_produto) {
+      const reMatch = matchEPA(r.epa_produto);
+      if (reMatch) {
+        document.getElementById('epa-match-info').textContent = `📋 EPA: ${reMatch.produto} (${reMatch.sku})`;
+      }
+    }
+
+    S.results.laudo = r;
+    document.getElementById('load-laudo').classList.remove('show');
+    document.getElementById('btn-laudo').disabled = false;
+    const cls = r.status === 'APROVADO' ? 'ok' : r.status === 'REPROVADO' ? 'fail' : 'warn';
+    setModStatus('laudo', cls);
+    renderResBlock('res-laudo', r, 'parametro', 'especificacao');
+    pushHistory('Laudo', r);
+
+  } catch(err) {
+    clearInterval(iv);
+    document.getElementById('load-laudo').classList.remove('show');
+    document.getElementById('btn-laudo').disabled = false;
+    setModStatus('laudo', 'pending');
+    alert('Erro na análise: ' + err.message);
+  }
+}
+
+// ══════════════════════════════════════════════════
+// RUN: NF
+// ══════════════════════════════════════════════════
+async function runNF() {
+  const nfTxt = document.getElementById('txt-nf')?.value.trim();
+  if (!nfTxt) { alert('⚠️ Insira os dados da Nota Fiscal.'); return; }
+
+  document.getElementById('btn-nf').disabled = true;
+  document.getElementById('load-nf').classList.add('show');
+  document.getElementById('res-nf').classList.remove('show');
+  setModStatus('nf','running');
+
+  const params = S.nfParams.map(p=>`- ${p.campo}: ${p.regra}`).join('\n');
+  const prompt = `Você é um sistema de análise fiscal para recebimento de produtos da Genomma.
+
+PARÂMETROS DE VERIFICAÇÃO DA NF:
+${params}
+
+DADOS DA NOTA FISCAL:
+${nfTxt}
+
+Analise a NF contra os parâmetros e retorne SOMENTE JSON sem markdown:
+{
+  "status": "APROVADO"|"REPROVADO"|"APROVADO COM RESSALVAS",
+  "score": 0-100,
+  "titulo": "título curto",
+  "resumo": "1 frase resumo",
+  "itens": [{"campo":"","esperado":"","encontrado":"","status":"OK"|"NOK"|"AVISO","observacao":""}],
+  "divergencias_criticas": [],
+  "avisos": [],
+  "recomendacao": ""
+}`;
+
+  try {
+    const r = await callAI(prompt);
+    S.results.nf = r;
+    document.getElementById('load-nf').classList.remove('show');
+    document.getElementById('btn-nf').disabled = false;
+    const cls = r.status==='APROVADO'?'ok':r.status==='REPROVADO'?'fail':'warn';
+    setModStatus('nf', cls);
+    renderResBlock('res-nf', r, 'campo', 'esperado');
+    pushHistory('Nota Fiscal', r);
+  } catch(err) {
+    document.getElementById('load-nf').classList.remove('show');
+    document.getElementById('btn-nf').disabled = false;
+    setModStatus('nf','pending');
+    alert('Erro: '+err.message);
+  }
+}
+
+// ══════════════════════════════════════════════════
+// RUN: PEDIDO
+// ══════════════════════════════════════════════════
+async function runPed() {
+  const pedTxt = document.getElementById('txt-pedido')?.value.trim();
+  if (!pedTxt) { alert('⚠️ Insira os dados do Pedido.'); return; }
+
+  document.getElementById('btn-ped').disabled = true;
+  document.getElementById('load-ped').classList.add('show');
+  document.getElementById('res-ped').classList.remove('show');
+  setModStatus('ped','running');
+
+  const params = S.pedParams.map(p=>`- ${p.campo}: ${p.regra}`).join('\n');
+  const prompt = `Você é um sistema de análise de supply chain para recebimento de produtos da Genomma.
+
+PARÂMETROS DE VERIFICAÇÃO DO PEDIDO:
+${params}
+
+DADOS DO PEDIDO DE COMPRA:
+${pedTxt}
+
+Analise o pedido contra os parâmetros e retorne SOMENTE JSON sem markdown:
+{
+  "status": "APROVADO"|"REPROVADO"|"APROVADO COM RESSALVAS",
+  "score": 0-100,
+  "titulo": "título curto",
+  "resumo": "1 frase resumo",
+  "itens": [{"campo":"","esperado":"","encontrado":"","status":"OK"|"NOK"|"AVISO","observacao":""}],
+  "divergencias_criticas": [],
+  "avisos": [],
+  "recomendacao": ""
+}`;
+
+  try {
+    const r = await callAI(prompt);
+    S.results.ped = r;
+    document.getElementById('load-ped').classList.remove('show');
+    document.getElementById('btn-ped').disabled = false;
+    const cls = r.status==='APROVADO'?'ok':r.status==='REPROVADO'?'fail':'warn';
+    setModStatus('ped', cls);
+    renderResBlock('res-ped', r, 'campo', 'esperado');
+    pushHistory('Pedido', r);
+  } catch(err) {
+    document.getElementById('load-ped').classList.remove('show');
+    document.getElementById('btn-ped').disabled = false;
+    setModStatus('ped','pending');
+    alert('Erro: '+err.message);
+  }
+}
+
+// ══════════════════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════════════════
+function pushHistory(modulo, r) {
+  const produto = document.getElementById('info-produto').value || '—';
+  const analista = document.getElementById('info-analista').value || '—';
+  const entry = { modulo, produto, analista, status: r.status, score: r.score, resumo: r.resumo, ts: new Date(), r };
+  S.history.unshift(entry);
+  document.getElementById('badge-hist').textContent = S.history.length;
+  const cls = r.status==='APROVADO'?'ok':r.status==='REPROVADO'?'fail':'warn';
+  const list = document.getElementById('hist-list');
+  if (list.querySelector('.empty')) list.innerHTML = '';
+  list.insertAdjacentHTML('afterbegin', `
+    <div class="hist-row">
+      <div class="hdot ${cls}"></div>
+      <div class="hinfo">
+        <div class="hname">${produto} · ${modulo}</div>
+        <div class="hmeta">${r.status} · Score ${r.score}%</div>
+      </div>
+      <div class="htime">${new Date(entry.ts).toLocaleString('pt-BR')}</div>
+    </div>`);
+}
+
+// ══════════════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════════════
+function exportResult() {
+  const { laudo, nf, ped } = S.results;
+  const produto = document.getElementById('info-produto').value;
+  const analista = document.getElementById('info-analista').value;
+  const lines = [
+    'GENOMMA · ANÁLISE DE INBOUND',
+    '─────────────────────────────',
+    `Produto : ${produto}`, `Analista: ${analista}`,
+    `Data    : ${new Date().toLocaleString('pt-BR')}`, '',
+  ];
+  for (const [label, res] of [['LAUDO/EPA', laudo], ['NOTA FISCAL', nf], ['PEDIDO', ped]]) {
+    if (!res) continue;
+    lines.push(`── ${label} ──`, `Status: ${res.status} · Score: ${res.score}%`, `Resumo: ${res.resumo}`);
+    (res.divergencias_criticas||[]).forEach(d => lines.push('  ! '+d));
+    (res.avisos||[]).forEach(a => lines.push('  ~ '+a));
+    lines.push(`  → ${res.recomendacao}`, '');
+  }
+  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `inbound-${(produto||'analise').replace(/\s/g,'_')}-${Date.now()}.txt`;
+  a.click();
+}
+
+function resetForm() {
+  ['txt-laudo','txt-nf','txt-pedido','info-produto','info-fornecedor','info-analista']
+    .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['laudo','nf','pedido'].forEach(z => {
+    delete S.files[z];
+    const c=document.getElementById('chip-'+z); if(c) c.innerHTML='';
+  });
+  ['laudo','nf','ped'].forEach(m => {
+    const r=document.getElementById('res-'+m); if(r) r.classList.remove('show');
+    if(m!=='nf'&&m!=='ped') setModStatus(m,'pending');
+    else if(S.nfEnabled&&m==='nf') setModStatus(m,'pending');
+    else if(S.pedEnabled&&m==='ped') setModStatus(m,'pending');
+  });
+  S.results = {laudo:null, nf:null, ped:null};
+  document.getElementById('epa-match-info').textContent = '—';
+}
+
+// ══════════════════════════════════════════════════
+// PERSISTÊNCIA (localStorage)
+// ══════════════════════════════════════════════════
+function saveEPAs() {
+  try { localStorage.setItem('genomma_epas', JSON.stringify(S.epas)); } catch(e) {}
+}
+function loadEPAs() {
+  try {
+    const raw = localStorage.getItem('genomma_epas');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) {
+        S.epas = parsed;
+        return true;
+      }
+    }
+  } catch(e) {}
+  return false;
+}
+
+// Patch delEPA e saveManualEPA para salvar automaticamente
+const _origDelEPA = delEPA;
+window.delEPA = function(i) {
+  const epa = S.epas[i];
+  if (!epa) { alert('EPA não encontrada.'); return; }
+  if (confirm(`Remover a EPA "${epa.produto || epa.sku}"?\nEsta ação não pode ser desfeita.`)) {
+    S.epas.splice(i, 1);
+    saveEPAs();
+    renderEPALib();
+    closeEPADet();
+    document.getElementById('badge-epas').textContent = S.epas.length;
+    document.getElementById('no-epa-warn').style.display = S.epas.length === 0 ? 'flex' : 'none';
+  }
+};
+
+const _origClearAll = clearAllEPAs;
+window.clearAllEPAs = function() {
+  if (!S.epas.length) { alert('Nenhuma EPA para remover.'); return; }
+  if (confirm(`Remover todas as ${S.epas.length} EPA(s) cadastradas?\nEsta ação não pode ser desfeita.`)) {
+    S.epas = [];
+    saveEPAs();
+    renderEPALib();
+    closeEPADet();
+    document.getElementById('badge-epas').textContent = '0';
+    document.getElementById('no-epa-warn').style.display = 'flex';
+  }
+};
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+const tmrw = new Date(); tmrw.setDate(tmrw.getDate()+1);
+document.getElementById('info-chegada').value = tmrw.toISOString().split('T')[0];
+
+// Carregar EPAs salvas
+if (loadEPAs()) {
+  renderEPALib();
+  document.getElementById('badge-epas').textContent = S.epas.length;
+  document.getElementById('no-epa-warn').style.display = 'none';
+}
+
+['nf-campo','nf-regra'].forEach(id => document.getElementById(id)?.addEventListener('keydown', e => e.key==='Enter' && addNF()));
+['ped-campo','ped-regra'].forEach(id => document.getElementById(id)?.addEventListener('keydown', e => e.key==='Enter' && addPed()));
+</script>
+</body>
+</html>
